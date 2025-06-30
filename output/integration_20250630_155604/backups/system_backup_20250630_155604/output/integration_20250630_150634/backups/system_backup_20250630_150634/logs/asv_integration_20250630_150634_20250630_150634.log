@@ -1,0 +1,12 @@
+2025-06-30 15:06:34 - asv_integration_20250630_150634 - INFO - ASV Dataset Integrator initialized
+2025-06-30 15:06:34 - asv_integration_20250630_150634 - INFO - Integration directory: output/integration_20250630_150634
+2025-06-30 15:06:34 - asv_integration_20250630_150634 - INFO - Conversion mode: split_only
+2025-06-30 15:06:34 - asv_integration_20250630_150634 - INFO - Validation level: standard
+2025-06-30 15:06:34 - asv_integration_20250630_150634 - INFO - ================================================================================
+2025-06-30 15:06:34 - asv_integration_20250630_150634 - INFO - STARTING ASV DATASET INTEGRATION
+2025-06-30 15:06:34 - asv_integration_20250630_150634 - INFO - ================================================================================
+2025-06-30 15:06:34 - asv_integration_20250630_150634 - INFO - [20.0%] Step 1/5: Prerequisites Validation
+2025-06-30 15:06:34 - asv_integration_20250630_150634 - INFO - Validating prerequisites...
+2025-06-30 15:06:34 - asv_integration_20250630_150634 - INFO - ✓ Prerequisites validation passed
+2025-06-30 15:06:34 - asv_integration_20250630_150634 - INFO - [40.0%] Step 2/5: System Backup
+2025-06-30 15:06:34 - asv_integration_20250630_150634 - INFO - Creating system backup...

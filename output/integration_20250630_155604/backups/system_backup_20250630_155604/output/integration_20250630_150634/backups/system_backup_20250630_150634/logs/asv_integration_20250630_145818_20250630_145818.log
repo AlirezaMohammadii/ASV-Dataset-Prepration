@@ -1,0 +1,23 @@
+2025-06-30 14:58:18 - asv_integration_20250630_145818 - INFO - ASV Dataset Integrator initialized
+2025-06-30 14:58:18 - asv_integration_20250630_145818 - INFO - Integration directory: output/integration_20250630_145818
+2025-06-30 14:58:18 - asv_integration_20250630_145818 - INFO - Conversion mode: split_only
+2025-06-30 14:58:18 - asv_integration_20250630_145818 - INFO - Validation level: standard
+2025-06-30 14:58:18 - asv_integration_20250630_145818 - INFO - ================================================================================
+2025-06-30 14:58:18 - asv_integration_20250630_145818 - INFO - STARTING ASV DATASET INTEGRATION
+2025-06-30 14:58:18 - asv_integration_20250630_145818 - INFO - ================================================================================
+2025-06-30 14:58:18 - asv_integration_20250630_145818 - INFO - [20.0%] Step 1/5: Prerequisites Validation
+2025-06-30 14:58:18 - asv_integration_20250630_145818 - INFO - Validating prerequisites...
+2025-06-30 14:58:18 - asv_integration_20250630_145818 - ERROR - Prerequisites validation failed:
+2025-06-30 14:58:18 - asv_integration_20250630_145818 - ERROR -   - Required file not found: output/analysis/file_label_mappings_*.csv
+2025-06-30 14:58:18 - asv_integration_20250630_145818 - ERROR -   - Required file not found: output/analysis/data_structure_analysis_*.json
+2025-06-30 14:58:18 - asv_integration_20250630_145818 - ERROR - ================================================================================
+2025-06-30 14:58:18 - asv_integration_20250630_145818 - ERROR - ❌ INTEGRATION FAILED
+2025-06-30 14:58:18 - asv_integration_20250630_145818 - ERROR - ================================================================================
+2025-06-30 14:58:18 - asv_integration_20250630_145818 - ERROR - Error: Prerequisites validation failed
+2025-06-30 14:58:18 - asv_integration_20250630_145818 - ERROR - Total errors: 2
+2025-06-30 14:58:18 - asv_integration_20250630_145818 - ERROR - Error details:
+2025-06-30 14:58:18 - asv_integration_20250630_145818 - ERROR -   - Required file not found: output/analysis/file_label_mappings_*.csv
+2025-06-30 14:58:18 - asv_integration_20250630_145818 - ERROR -   - Required file not found: output/analysis/data_structure_analysis_*.json
+2025-06-30 14:58:18 - asv_integration_20250630_145818 - INFO - Attempting rollback...
+2025-06-30 14:58:18 - asv_integration_20250630_145818 - INFO - Rolling back changes...
+2025-06-30 14:58:18 - asv_integration_20250630_145818 - WARNING - No backup paths available for rollback

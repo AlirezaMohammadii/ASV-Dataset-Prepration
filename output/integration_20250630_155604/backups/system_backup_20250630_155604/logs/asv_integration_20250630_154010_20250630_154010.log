@@ -1,0 +1,31 @@
+2025-06-30 15:40:10 - asv_integration_20250630_154010 - INFO - ASV Dataset Integrator initialized
+2025-06-30 15:40:10 - asv_integration_20250630_154010 - INFO - Integration directory: output/integration_20250630_154010
+2025-06-30 15:40:10 - asv_integration_20250630_154010 - INFO - Conversion mode: full_conversion
+2025-06-30 15:40:10 - asv_integration_20250630_154010 - INFO - Validation level: comprehensive
+2025-06-30 15:40:10 - asv_integration_20250630_154010 - INFO - ================================================================================
+2025-06-30 15:40:10 - asv_integration_20250630_154010 - INFO - STARTING ASV DATASET INTEGRATION
+2025-06-30 15:40:10 - asv_integration_20250630_154010 - INFO - ================================================================================
+2025-06-30 15:40:10 - asv_integration_20250630_154010 - INFO - [12.5%] Step 1/8: Prerequisites Validation
+2025-06-30 15:40:10 - asv_integration_20250630_154010 - INFO - Validating prerequisites...
+2025-06-30 15:40:10 - asv_integration_20250630_154010 - INFO - ✓ Prerequisites validation passed
+2025-06-30 15:40:10 - asv_integration_20250630_154010 - INFO - [25.0%] Step 2/8: System Backup
+2025-06-30 15:40:10 - asv_integration_20250630_154010 - INFO - Creating system backup...
+2025-06-30 15:40:10 - asv_integration_20250630_154010 - INFO - ✓ System backup created: output/integration_20250630_154010/backups/system_backup_20250630_154010
+2025-06-30 15:40:10 - asv_integration_20250630_154010 - INFO - [37.5%] Step 3/8: Task 1: Data Structure Analysis
+2025-06-30 15:40:10 - asv_integration_20250630_154010 - INFO - Running data structure analysis...
+2025-06-30 15:40:10 - asv_integration_20250630_154010 - INFO - ✓ Task 1 completed successfully
+2025-06-30 15:40:10 - asv_integration_20250630_154010 - INFO - [50.0%] Step 4/8: Task 2: File Label Mapping
+2025-06-30 15:40:10 - asv_integration_20250630_154010 - INFO - Running file label mapping...
+2025-06-30 15:40:12 - asv_integration_20250630_154010 - ERROR - Task 2 failed: 'detailed_analyses'
+2025-06-30 15:40:12 - asv_integration_20250630_154010 - INFO - [62.5%] Step 5/8: Generating Integration Report
+2025-06-30 15:40:12 - asv_integration_20250630_154010 - INFO - ✓ Integration report generated: output/integration_20250630_154010/reports/integration_report_20250630_154010.json
+2025-06-30 15:40:12 - asv_integration_20250630_154010 - ERROR - ================================================================================
+2025-06-30 15:40:12 - asv_integration_20250630_154010 - ERROR - ❌ INTEGRATION FAILED
+2025-06-30 15:40:12 - asv_integration_20250630_154010 - ERROR - ================================================================================
+2025-06-30 15:40:12 - asv_integration_20250630_154010 - ERROR - Error: Integration process failed
+2025-06-30 15:40:12 - asv_integration_20250630_154010 - ERROR - Total errors: 1
+2025-06-30 15:40:12 - asv_integration_20250630_154010 - ERROR - Error details:
+2025-06-30 15:40:12 - asv_integration_20250630_154010 - ERROR -   - Task 2 failed: 'detailed_analyses'
+2025-06-30 15:40:12 - asv_integration_20250630_154010 - INFO - Attempting rollback...
+2025-06-30 15:40:12 - asv_integration_20250630_154010 - INFO - Rolling back changes...
+2025-06-30 15:40:12 - asv_integration_20250630_154010 - INFO - ✓ Rollback completed

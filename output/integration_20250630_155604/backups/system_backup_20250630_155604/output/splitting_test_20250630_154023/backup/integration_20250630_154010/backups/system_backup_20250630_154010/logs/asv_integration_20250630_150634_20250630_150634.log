@@ -1,0 +1,28 @@
+2025-06-30 15:06:34 - asv_integration_20250630_150634 - INFO - ASV Dataset Integrator initialized
+2025-06-30 15:06:34 - asv_integration_20250630_150634 - INFO - Integration directory: output/integration_20250630_150634
+2025-06-30 15:06:34 - asv_integration_20250630_150634 - INFO - Conversion mode: split_only
+2025-06-30 15:06:34 - asv_integration_20250630_150634 - INFO - Validation level: standard
+2025-06-30 15:06:34 - asv_integration_20250630_150634 - INFO - ================================================================================
+2025-06-30 15:06:34 - asv_integration_20250630_150634 - INFO - STARTING ASV DATASET INTEGRATION
+2025-06-30 15:06:34 - asv_integration_20250630_150634 - INFO - ================================================================================
+2025-06-30 15:06:34 - asv_integration_20250630_150634 - INFO - [20.0%] Step 1/5: Prerequisites Validation
+2025-06-30 15:06:34 - asv_integration_20250630_150634 - INFO - Validating prerequisites...
+2025-06-30 15:06:34 - asv_integration_20250630_150634 - INFO - ✓ Prerequisites validation passed
+2025-06-30 15:06:34 - asv_integration_20250630_150634 - INFO - [40.0%] Step 2/5: System Backup
+2025-06-30 15:06:34 - asv_integration_20250630_150634 - INFO - Creating system backup...
+2025-06-30 15:06:34 - asv_integration_20250630_150634 - INFO - ✓ System backup created: output/integration_20250630_150634/backups/system_backup_20250630_150634
+2025-06-30 15:06:34 - asv_integration_20250630_150634 - INFO - [60.0%] Step 3/5: Task 4: Dataset Splitting and Balancing
+2025-06-30 15:06:34 - asv_integration_20250630_150634 - INFO - Running dataset splitting (Option A)...
+2025-06-30 15:06:35 - asv_integration_20250630_150634 - ERROR - Task 4 failed: 'detailed_analyses'
+2025-06-30 15:06:35 - asv_integration_20250630_150634 - INFO - [80.0%] Step 4/5: Generating Integration Report
+2025-06-30 15:06:35 - asv_integration_20250630_150634 - INFO - ✓ Integration report generated: output/integration_20250630_150634/reports/integration_report_20250630_150634.json
+2025-06-30 15:06:35 - asv_integration_20250630_150634 - ERROR - ================================================================================
+2025-06-30 15:06:35 - asv_integration_20250630_150634 - ERROR - ❌ INTEGRATION FAILED
+2025-06-30 15:06:35 - asv_integration_20250630_150634 - ERROR - ================================================================================
+2025-06-30 15:06:35 - asv_integration_20250630_150634 - ERROR - Error: Integration process failed
+2025-06-30 15:06:35 - asv_integration_20250630_150634 - ERROR - Total errors: 1
+2025-06-30 15:06:35 - asv_integration_20250630_150634 - ERROR - Error details:
+2025-06-30 15:06:35 - asv_integration_20250630_150634 - ERROR -   - Task 4 failed: 'detailed_analyses'
+2025-06-30 15:06:35 - asv_integration_20250630_150634 - INFO - Attempting rollback...
+2025-06-30 15:06:35 - asv_integration_20250630_150634 - INFO - Rolling back changes...
+2025-06-30 15:06:35 - asv_integration_20250630_150634 - INFO - ✓ Rollback completed

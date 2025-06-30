@@ -1,0 +1,34 @@
+2025-06-30 15:40:23 - splitting_test - INFO - Test system initialized at output/splitting_test_20250630_154023
+2025-06-30 15:40:23 - splitting_test - INFO - Starting comprehensive splitting options test...
+2025-06-30 15:40:23 - splitting_test - INFO - Creating backup of current state...
+2025-06-30 15:40:23 - splitting_test - INFO - Backed up 11 items
+2025-06-30 15:40:23 - splitting_test - INFO - 
+Testing option A (1/3)...
+2025-06-30 15:40:23 - splitting_test - INFO - 
+============================================================
+2025-06-30 15:40:23 - splitting_test - INFO - TESTING OPTION A
+2025-06-30 15:40:23 - splitting_test - INFO - ============================================================
+2025-06-30 15:40:24 - splitting_test - ERROR - ✗ Option A failed: 'detailed_analyses'
+2025-06-30 15:40:24 - splitting_test - ERROR - ✗ Option A test failed
+2025-06-30 15:40:24 - splitting_test - INFO - 
+Testing option B (2/3)...
+2025-06-30 15:40:24 - splitting_test - INFO - Resetting to backup state...
+2025-06-30 15:40:24 - splitting_test - INFO - Restored 10 items from backup
+2025-06-30 15:40:24 - splitting_test - INFO - 
+============================================================
+2025-06-30 15:40:24 - splitting_test - INFO - TESTING OPTION B
+2025-06-30 15:40:24 - splitting_test - INFO - ============================================================
+2025-06-30 15:40:26 - splitting_test - ERROR - ✗ Option B failed: 'detailed_analyses'
+2025-06-30 15:40:26 - splitting_test - ERROR - ✗ Option B test failed
+2025-06-30 15:40:26 - splitting_test - INFO - 
+Testing option C (3/3)...
+2025-06-30 15:40:26 - splitting_test - INFO - Resetting to backup state...
+2025-06-30 15:40:26 - splitting_test - INFO - Restored 10 items from backup
+2025-06-30 15:40:26 - splitting_test - INFO - 
+============================================================
+2025-06-30 15:40:26 - splitting_test - INFO - TESTING OPTION C
+2025-06-30 15:40:26 - splitting_test - INFO - ============================================================
+2025-06-30 15:40:28 - splitting_test - ERROR - ✗ Option C failed: 'detailed_analyses'
+2025-06-30 15:40:28 - splitting_test - ERROR - ✗ Option C test failed
+2025-06-30 15:40:28 - splitting_test - INFO - 
+All tests completed! Results saved to: output/splitting_test_20250630_154023

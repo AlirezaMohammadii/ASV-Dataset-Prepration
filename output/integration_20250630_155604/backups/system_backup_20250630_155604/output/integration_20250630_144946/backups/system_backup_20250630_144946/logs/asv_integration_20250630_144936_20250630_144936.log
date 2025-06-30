@@ -1,0 +1,23 @@
+2025-06-30 14:49:36 - asv_integration_20250630_144936 - INFO - ASV Dataset Integrator initialized
+2025-06-30 14:49:36 - asv_integration_20250630_144936 - INFO - Integration directory: output/integration_20250630_144936
+2025-06-30 14:49:36 - asv_integration_20250630_144936 - INFO - Conversion mode: analysis_only
+2025-06-30 14:49:36 - asv_integration_20250630_144936 - INFO - Validation level: basic
+2025-06-30 14:49:36 - asv_integration_20250630_144936 - INFO - ================================================================================
+2025-06-30 14:49:36 - asv_integration_20250630_144936 - INFO - STARTING ASV DATASET INTEGRATION
+2025-06-30 14:49:36 - asv_integration_20250630_144936 - INFO - ================================================================================
+2025-06-30 14:49:36 - asv_integration_20250630_144936 - INFO - [25.0%] Step 1/4: Prerequisites Validation
+2025-06-30 14:49:36 - asv_integration_20250630_144936 - INFO - Validating prerequisites...
+2025-06-30 14:49:36 - asv_integration_20250630_144936 - INFO - ✓ Prerequisites validation passed
+2025-06-30 14:49:36 - asv_integration_20250630_144936 - INFO - [50.0%] Step 2/4: System Backup
+2025-06-30 14:49:36 - asv_integration_20250630_144936 - INFO - Backup disabled - skipping
+2025-06-30 14:49:36 - asv_integration_20250630_144936 - INFO - [75.0%] Step 3/4: Task 1: Data Structure Analysis
+2025-06-30 14:49:36 - asv_integration_20250630_144936 - INFO - Running data structure analysis...
+2025-06-30 14:49:37 - asv_integration_20250630_144936 - INFO - ✓ Task 1 completed successfully
+2025-06-30 14:49:37 - asv_integration_20250630_144936 - INFO - [100.0%] Step 4/4: Generating Integration Report
+2025-06-30 14:49:37 - asv_integration_20250630_144936 - INFO - ✓ Integration report generated: output/integration_20250630_144936/reports/integration_report_20250630_144936.json
+2025-06-30 14:49:37 - asv_integration_20250630_144936 - INFO - ================================================================================
+2025-06-30 14:49:37 - asv_integration_20250630_144936 - INFO - ✅ INTEGRATION COMPLETED SUCCESSFULLY
+2025-06-30 14:49:37 - asv_integration_20250630_144936 - INFO - ================================================================================
+2025-06-30 14:49:37 - asv_integration_20250630_144936 - INFO - Total processing time: 0:00:01.064426
+2025-06-30 14:49:37 - asv_integration_20250630_144936 - INFO - Integration directory: output/integration_20250630_144936
+2025-06-30 14:49:37 - asv_integration_20250630_144936 - INFO - Report generated: output/integration_20250630_144936/reports/integration_report_20250630_144936.json

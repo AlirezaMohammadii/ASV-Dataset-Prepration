@@ -1,0 +1,19 @@
+# ASV Dataset Preparation Requirements
+# ===================================
+
+# Core data processing
+pandas>=1.5.0
+numpy>=1.20.0
+
+# File handling and path operations
+pathlib2>=2.3.0; python_version < "3.4"
+
+# Data serialization
+jsonschema>=4.0.0
+
+# Progress tracking and visualization
+tqdm>=4.64.0
+
+# Optional: For advanced analysis and plotting
+matplotlib>=3.5.0
+seaborn>=0.11.0 
