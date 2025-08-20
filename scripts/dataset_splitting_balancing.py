@@ -22,6 +22,7 @@ sys.path.append(str(Path(__file__).parent.parent))
 
 from config.dataset_config import config
 from utils.logging_utils import setup_logger
+from utils.protocol_parser import ProtocolParser
 
 
 @dataclass
@@ -63,7 +64,50 @@ class DatasetSplittingSystem:
         mapping_files = list(analysis_dir.glob("file_label_mappings_*.csv"))
         
         if not mapping_files:
-            raise FileNotFoundError("No file mapping results found from Task 2")
+            self.logger.warning("No file mapping results found; generating from protocols...")
+            analysis_dir.mkdir(parents=True, exist_ok=True)
+            from datetime import datetime
+            ts = datetime.now().strftime("%Y%m%d_%H%M%S")
+            out_csv = analysis_dir / f"file_label_mappings_{ts}.csv"
+            parser = ProtocolParser()
+            entries_by_split = parser.parse_all_protocols()
+            data_dirs = {
+                'train': config.paths.la_train_dir,
+                'dev': config.paths.la_dev_dir,
+                'eval': config.paths.la_eval_dir,
+            }
+            import csv
+            with open(out_csv, 'w', newline='') as f:
+                writer = csv.writer(f)
+                writer.writerow([
+                    'Original_Filename','Original_Speaker','Original_Label','Original_Attack_Type',
+                    'Mapped_Label','Mapped_Attack_Category','Split','File_Exists','File_Size_MB','Mapped_Filename_Pattern'
+                ])
+                for split_enum, entries in entries_by_split.items():
+                    split = split_enum.value
+                    for e in entries:
+                        filename = e.audio_file_name + '.flac'
+                        label = 'genuine' if e.key == 'bonafide' else 'deepfake'
+                        attack_id = None if label=='genuine' else e.system_id
+                        attack_cat = None if label=='genuine' else config.get_attack_category(attack_id)
+                        src = data_dirs[split] / filename
+                        exists = src.exists()
+                        size_mb = (src.stat().st_size / (1024*1024)) if exists else ''
+                        pattern = config.conversion.genuine_file_format if label=='genuine' else config.get_deepfake_filename_format(attack_id or '')
+                        writer.writerow([
+                            filename,
+                            e.speaker_id,
+                            'bonafide' if label=='genuine' else 'spoof',
+                            attack_id or '',
+                            label,
+                            attack_cat or '',
+                            split,
+                            exists,
+                            size_mb,
+                            pattern
+                        ])
+            self.logger.info(f"✓ Generated mapping CSV: {out_csv}")
+            mapping_files = [out_csv]
         
         latest_file = max(mapping_files, key=lambda p: p.stat().st_mtime)
         self.logger.info(f"Loading mappings from: {latest_file}")
@@ -291,7 +335,8 @@ class DatasetSplittingSystem:
                 'new_split': new_split,
                 'user_id': user_id,
                 'label': label,
-                'attack_category': attack_category
+                'attack_category': attack_category,
+                'attack_id': mapping.get('original_attack_type') or mapping.get('Original_Attack_Type')
             }
         
         # Convert sets to lists and counters to dicts
@@ -394,7 +439,8 @@ class DatasetSplittingSystem:
                         'new_split': split_name,
                         'user_id': user_id,
                         'label': 'genuine',
-                        'attack_category': None
+                        'attack_category': None,
+                        'attack_id': None
                     }
                 
                 # Process deepfake files
@@ -411,7 +457,8 @@ class DatasetSplittingSystem:
                         'new_split': split_name,
                         'user_id': user_id,
                         'label': 'deepfake',
-                        'attack_category': attack_category
+                        'attack_category': attack_category,
+                        'attack_id': mapping.get('original_attack_type') or mapping.get('Original_Attack_Type')
                     }
         
         # Convert sets to lists and counters to dicts
@@ -494,7 +541,8 @@ class DatasetSplittingSystem:
                 'new_split': new_split,
                 'user_id': user_id,
                 'label': label,
-                'attack_category': attack_category
+                'attack_category': attack_category,
+                'attack_id': mapping.get('original_attack_type') or mapping.get('Original_Attack_Type')
             }
         
         # Convert sets to lists and counters to dicts
@@ -547,7 +595,8 @@ class DatasetSplittingSystem:
                         'New_Split': mapping['new_split'],
                         'User_ID': mapping['user_id'],
                         'Label': mapping['label'],
-                        'Attack_Category': mapping['attack_category'] or ''
+                        'Attack_Category': mapping['attack_category'] or '',
+                        'Attack_ID': mapping['attack_id'] or ''
                     })
                 
                 if mappings_data:

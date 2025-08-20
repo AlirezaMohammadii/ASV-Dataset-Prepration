@@ -35,13 +35,96 @@ ENV/
 .DS_Store
 Thumbs.db
 
-# Project Specific
-logs/*.log
-output/*.json
-output/*.csv
+# Project Specific - Logs and Output
+logs/
+output/
+*.log
+*.json
+*.csv
 *.tmp
 *.temp
 
+# Specific log patterns
+logs/*.log
+logs/*.json
+output/*.json
+output/*.csv
+output/*/
+output/integration_*/
+output/analysis/
+output/backups/
+output/reports/
+output/splitting_*/
+output/converted_data/
+
+# Backup and temporary files
+backups/
+*.backup
+*.bak
+*.old
+*.orig
+
+# Data files
+*.flac
+*.wav
+*.mp3
+*.m4a
+*.aac
+
+# Large files and datasets
+*.zip
+*.tar
+*.gz
+*.rar
+*.7z
+
 # Environment variables
 .env
-EOF
+.env.local
+.env.*.local
+
+# Cache and temporary directories
+cache/
+tmp/
+temp/
+.tmp/
+
+# Jupyter notebooks
+*.ipynb
+.ipynb_checkpoints/
+
+# Documentation builds
+docs/_build/
+site/
+
+# Coverage reports
+htmlcov/
+.coverage
+coverage.xml
+*.cover
+
+# Profiling data
+*.prof
+
+# PyCharm
+.idea/
+
+# VS Code
+.vscode/
+
+# macOS
+.DS_Store
+.AppleDouble
+.LSOverride
+
+# Windows
+Thumbs.db
+ehthumbs.db
+Desktop.ini
+
+# Linux
+*~
+.fuse_hidden*
+.directory
+.Trash-*
+.nfs*

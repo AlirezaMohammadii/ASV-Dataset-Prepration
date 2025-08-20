@@ -66,8 +66,10 @@ class UserDirectory:
 class FileOrganizationSystem:
     """Comprehensive file organization and renaming system"""
     
-    def __init__(self, use_copy: bool = True, create_backup: bool = True):
-        self.logger = setup_logger('FileOrganizationSystem', config.paths.logs_dir)
+    def __init__(self, config_instance=None, use_copy: bool = True, create_backup: bool = True):
+        # Use provided config or fall back to global config
+        self.config = config_instance if config_instance is not None else config
+        self.logger = setup_logger('FileOrganizationSystem', self.config.paths.logs_dir)
         self.timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
         
         # Configuration
@@ -104,7 +106,7 @@ class FileOrganizationSystem:
         self.logger.info("Loading file-to-label mappings from Task 2...")
         
         # Find the latest mappings file
-        analysis_dir = config.paths.analysis_output_dir
+        analysis_dir = self.config.paths.analysis_output_dir
         mapping_files = list(analysis_dir.glob("file_label_mappings_*.csv"))
         
         if not mapping_files:
@@ -138,7 +140,7 @@ class FileOrganizationSystem:
         self.logger.info("Loading user assignments from Task 1...")
         
         # Find the latest analysis file
-        analysis_dir = config.paths.analysis_output_dir
+        analysis_dir = self.config.paths.analysis_output_dir
         analysis_files = list(analysis_dir.glob("data_structure_analysis_*.json"))
         
         if not analysis_files:
@@ -225,12 +227,31 @@ class FileOrganizationSystem:
                 for speaker in user_assignment['speakers']:
                     speaker_to_user[speaker] = user_id
             
-            # Data directories
-            data_dirs = {
-                'train': config.paths.la_train_dir,
-                'dev': config.paths.la_dev_dir,
-                'eval': config.paths.la_eval_dir
-            }
+            # Data directories - use correct paths based on dataset year and scenario
+            if getattr(self.config, 'dataset_year', None) and self.config.dataset_year.value == '2021':
+                # ASVspoof2021: eval only
+                if getattr(self.config, 'scenario', None) and self.config.scenario.value == 'PA':
+                    data_dirs = {
+                        'eval': self.config.paths.pa2021_eval_dir
+                    }
+                else:
+                    data_dirs = {
+                        'eval': self.config.paths.la2021_eval_dir
+                    }
+            else:
+                # ASVspoof2019: train, dev, eval
+                if getattr(self.config, 'scenario', None) and self.config.scenario.value == 'PA':
+                    data_dirs = {
+                        'train': self.config.paths.pa_train_dir,
+                        'dev': self.config.paths.pa_dev_dir,
+                        'eval': self.config.paths.pa_eval_dir
+                    }
+                else:
+                    data_dirs = {
+                        'train': self.config.paths.la_train_dir,
+                        'dev': self.config.paths.la_dev_dir,
+                        'eval': self.config.paths.la_eval_dir
+                    }
             
             # User file counters for sequential numbering
             user_counters = defaultdict(lambda: {'genuine': 0, 'deepfake': 0})
@@ -268,7 +289,11 @@ class FileOrganizationSystem:
                     user_counters[user_id]['deepfake'] += 1
                     counter = user_counters[user_id]['deepfake']
                     attack_category = mapping['mapped_attack_category']
-                    new_filename = f"{user_id}_deepfake_{attack_category}_{counter:03d}.flac"
+                    attack_id = mapping.get('original_attack_type') or mapping.get('Original_Attack_Type')
+                    if self.config.conversion.include_attack_id_in_filename and attack_id:
+                        new_filename = f"{user_id}_deepfake_{attack_category}_{attack_id.lower()}_{counter:03d}.flac"
+                    else:
+                        new_filename = f"{user_id}_deepfake_{attack_category}_{counter:03d}.flac"
                 
                 target_path = user_dir / new_filename
                 
@@ -322,7 +347,7 @@ class FileOrganizationSystem:
             return True
         
         try:
-            backup_dir = config.paths.output_root / "backups" / f"backup_{self.timestamp}"
+            backup_dir = self.config.paths.output_root / "backups" / f"backup_{self.timestamp}"
             backup_dir.mkdir(parents=True, exist_ok=True)
             
             # Create manifest
@@ -514,7 +539,7 @@ class FileOrganizationSystem:
     def save_results(self) -> List[Path]:
         """Save operation results and reports"""
         saved_files = []
-        output_dir = config.paths.analysis_output_dir
+        output_dir = self.config.paths.analysis_output_dir
         
         try:
             # Save operation report

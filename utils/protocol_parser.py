@@ -21,6 +21,8 @@ from pathlib import Path
 sys.path.append(str(Path(__file__).parent.parent))
 
 from config.dataset_config import config, DatasetSplit
+from config.dataset_config import DatasetYear
+from config.dataset_config import Scenario
 
 
 class ProtocolEntry(NamedTuple):
@@ -48,42 +50,57 @@ class FileInfo:
 class ProtocolParser:
     """Parser for ASVspoof-2019 protocol files"""
     
-    def __init__(self):
+    def __init__(self, config_instance=None):
+        # Use provided config or fall back to global config
+        self.config = config_instance if config_instance is not None else config
         self.logger = logging.getLogger(__name__)
         self._protocol_cache = {}
         
-        # Protocol file patterns
-        self.protocol_files = {
+        # Protocol file patterns (2019 LA)
+        self.la_protocol_files = {
             DatasetSplit.TRAIN: "ASVspoof2019.LA.cm.train.trn.txt",
             DatasetSplit.DEV: "ASVspoof2019.LA.cm.dev.trl.txt", 
             DatasetSplit.EVAL: "ASVspoof2019.LA.cm.eval.trl.txt"
         }
         
-        # File name patterns
-        self.file_patterns = {
+        # Protocol file patterns (2019 PA)
+        self.pa_protocol_files = {
+            DatasetSplit.TRAIN: "ASVspoof2019.PA.cm.train.trn.txt",
+            DatasetSplit.DEV: "ASVspoof2019.PA.cm.dev.trl.txt", 
+            DatasetSplit.EVAL: "ASVspoof2019.PA.cm.eval.trl.txt"
+        }
+        
+        # File name patterns (2019 LA)
+        self.la_file_patterns = {
             DatasetSplit.TRAIN: re.compile(r'^LA_T_(\d+)\.flac$'),
             DatasetSplit.DEV: re.compile(r'^LA_D_(\d+)\.flac$'),
             DatasetSplit.EVAL: re.compile(r'^LA_E_(\d+)\.flac$')
         }
+        
+        # File name patterns (2019 PA)
+        self.pa_file_patterns = {
+            DatasetSplit.TRAIN: re.compile(r'^PA_T_(\d+)\.flac$'),
+            DatasetSplit.DEV: re.compile(r'^PA_D_(\d+)\.flac$'),
+            DatasetSplit.EVAL: re.compile(r'^PA_E_(\d+)\.flac$')
+        }
+        
+        # Get protocol files based on scenario
+        if self.config.scenario == Scenario.PA:
+            self.protocol_files = self.pa_protocol_files
+            self.file_patterns = self.pa_file_patterns
+        else:
+            self.protocol_files = self.la_protocol_files
+            self.file_patterns = self.la_file_patterns
     
     def parse_protocol_file(self, protocol_file_path: Path) -> List[ProtocolEntry]:
         """
         Parse a single protocol file and return list of entries.
-        
-        Args:
-            protocol_file_path: Path to the protocol file
-            
-        Returns:
-            List of ProtocolEntry objects
-            
-        Raises:
-            FileNotFoundError: If protocol file doesn't exist
-            ValueError: If protocol file format is invalid
+        Only used for 2019 LA style.
         """
         if not protocol_file_path.exists():
             raise FileNotFoundError(f"Protocol file not found: {protocol_file_path}")
         
-        entries = []
+        entries: List[ProtocolEntry] = []
         
         try:
             with open(protocol_file_path, 'r', encoding='utf-8') as f:
@@ -91,14 +108,12 @@ class ProtocolParser:
                     line = line.strip()
                     if not line:
                         continue
-                    
                     parts = line.split()
                     if len(parts) != 5:
                         self.logger.warning(
                             f"Invalid line format at {protocol_file_path}:{line_num}: {line}"
                         )
                         continue
-                    
                     entry = ProtocolEntry(
                         speaker_id=parts[0],
                         audio_file_name=parts[1],
@@ -106,60 +121,77 @@ class ProtocolParser:
                         system_id=parts[3],
                         key=parts[4]
                     )
-                    
-                    # Validate entry
                     if not self._validate_protocol_entry(entry):
                         self.logger.warning(
                             f"Invalid protocol entry at {protocol_file_path}:{line_num}: {line}"
                         )
                         continue
-                    
                     entries.append(entry)
-                    
         except Exception as e:
-            raise ValueError(f"Error parsing protocol file {protocol_file_path}: {e}")
+            raise ValueError(f"Error parsing protocol file {protocol_file_path}: {e}") from e
         
         self.logger.info(f"Parsed {len(entries)} entries from {protocol_file_path}")
         return entries
     
     def _validate_protocol_entry(self, entry: ProtocolEntry) -> bool:
-        """Validate a protocol entry"""
-        # Check speaker ID format
-        if not re.match(r'^LA_\d{4}$', entry.speaker_id):
-            return False
-        
-        # Check audio file name format (without extension in protocol files)
-        if not re.match(r'^LA_[TDE]_\d+$', entry.audio_file_name):
-            return False
-        
-        # Check unused field (should be '-')
-        if entry.unused_field != '-':
-            return False
-        
-        # Check system ID
-        if entry.key == 'bonafide':
-            if entry.system_id != '-':
+        """Validate a protocol entry (2019 LA or PA)"""
+        if self.config.scenario == Scenario.LA:
+            # LA validation
+            if not re.match(r'^LA_\d{4}$', entry.speaker_id):
                 return False
-        elif entry.key == 'spoof':
-            if not re.match(r'^A\d{2}$', entry.system_id):
+            if not re.match(r'^LA_[TDE]_\d+$', entry.audio_file_name):
+                return False
+            if entry.unused_field != '-':
+                return False
+            if entry.key == 'bonafide':
+                if entry.system_id != '-':
+                    return False
+            elif entry.key == 'spoof':
+                if not re.match(r'^A\d{2}$', entry.system_id):
+                    return False
+            else:
+                return False
+        elif self.config.scenario == Scenario.PA:
+            # PA validation
+            if not re.match(r'^PA_\d{4}$', entry.speaker_id):
+                return False
+            if not re.match(r'^PA_[TDE]_\d+$', entry.audio_file_name):
+                return False
+            # PA has environment ID (3 letters) instead of unused field
+            if not re.match(r'^[abc]{3}$', entry.unused_field):
+                return False
+            if entry.key == 'bonafide':
+                if entry.system_id != '-':
+                    return False
+            elif entry.key == 'spoof':
+                # PA attack IDs are combinations like "AA", "AB", etc.
+                if not re.match(r'^[ABC]{2}$', entry.system_id):
+                    return False
+            else:
                 return False
         else:
             return False
-        
         return True
     
     def parse_all_protocols(self) -> Dict[DatasetSplit, List[ProtocolEntry]]:
         """
         Parse all protocol files and return organized entries.
-        
-        Returns:
-            Dictionary mapping dataset splits to protocol entries
+        Switch behavior based on dataset year and scenario in config.
         """
-        all_entries = {}
+        if getattr(self.config, 'dataset_year', None) and self.config.dataset_year.value == '2021':
+            # 2021 LA eval only: use keys metadata for labels and attack IDs
+            return self._parse_2021_la_keys_metadata()
+        
+        all_entries: Dict[DatasetSplit, List[ProtocolEntry]] = {}
+        
+        # Select protocol directory based on scenario
+        if self.config.scenario == Scenario.PA:
+            protocol_dir = self.config.paths.pa_cm_protocols_dir
+        else:
+            protocol_dir = self.config.paths.la_cm_protocols_dir
         
         for split, filename in self.protocol_files.items():
-            protocol_path = config.paths.la_cm_protocols_dir / filename
-            
+            protocol_path = protocol_dir / filename
             try:
                 entries = self.parse_protocol_file(protocol_path)
                 all_entries[split] = entries
@@ -167,8 +199,43 @@ class ProtocolParser:
             except Exception as e:
                 self.logger.error(f"Failed to parse {split.value} protocol: {e}")
                 all_entries[split] = []
-        
         return all_entries
+    
+    def _parse_2021_la_keys_metadata(self) -> Dict[DatasetSplit, List[ProtocolEntry]]:
+        """Parse ASVspoof2021 LA keys metadata (eval-only) into ProtocolEntry-like records."""
+        path = self.config.paths.la2021_cm_keys_metadata_file
+        if not path.exists():
+            raise FileNotFoundError(f"Missing ASVspoof2021 LA keys metadata: {path}")
+        entries_eval: List[ProtocolEntry] = []
+        try:
+            with open(path, 'r', encoding='utf-8') as f:
+                for line_num, line in enumerate(f, 1):
+                    line = line.strip()
+                    if not line:
+                        continue
+                    parts = line.split()
+                    # Expected: speaker_id, file_id, codec, channel, system_id_or_dash, key, trimflag, split
+                    if len(parts) < 8:
+                        raise ValueError(f"Invalid metadata format at {path}:{line_num}: {line}")
+                    speaker_id = parts[0]
+                    audio_id = parts[1]  # e.g., LA_E_9332881
+                    system_id = parts[4]
+                    key = parts[5]  # 'spoof' or 'bonafide'
+                    split_tag = parts[7]
+                    if split_tag != 'eval':
+                        continue
+                    # ProtocolEntry expects audio_file_name without extension
+                    entry = ProtocolEntry(
+                        speaker_id=speaker_id,
+                        audio_file_name=audio_id,
+                        unused_field='-',
+                        system_id=system_id if key == 'spoof' else '-',
+                        key=key
+                    )
+                    entries_eval.append(entry)
+        except Exception as e:
+            raise ValueError(f"Error parsing 2021 keys metadata: {e}") from e
+        return {DatasetSplit.EVAL: entries_eval}
     
     def create_file_mapping(self) -> Dict[str, FileInfo]:
         """
@@ -181,11 +248,24 @@ class ProtocolParser:
         protocol_entries = self.parse_all_protocols()
         
         # Data directories for each split
-        data_dirs = {
-            DatasetSplit.TRAIN: config.paths.la_train_dir,
-            DatasetSplit.DEV: config.paths.la_dev_dir,
-            DatasetSplit.EVAL: config.paths.la_eval_dir
-        }
+        if getattr(self.config, 'dataset_year', None) and self.config.dataset_year == DatasetYear.ASV2021:
+            data_dirs = {
+                DatasetSplit.EVAL: self.config.paths.la2021_eval_dir
+            }
+        else:
+            # 2019 - select data directories based on scenario
+            if self.config.scenario == Scenario.PA:
+                data_dirs = {
+                    DatasetSplit.TRAIN: self.config.paths.pa_train_dir,
+                    DatasetSplit.DEV: self.config.paths.pa_dev_dir,
+                    DatasetSplit.EVAL: self.config.paths.pa_eval_dir
+                }
+            else:
+                data_dirs = {
+                    DatasetSplit.TRAIN: self.config.paths.la_train_dir,
+                    DatasetSplit.DEV: self.config.paths.la_dev_dir,
+                    DatasetSplit.EVAL: self.config.paths.la_eval_dir
+                }
         
         for split, entries in protocol_entries.items():
             data_dir = data_dirs[split]
@@ -202,7 +282,7 @@ class ProtocolParser:
                 # Determine attack category
                 attack_category = None
                 if entry.key == 'spoof':
-                    attack_category = config.get_attack_category(entry.system_id)
+                    attack_category = self.config.get_attack_category(entry.system_id)
                 
                 file_info = FileInfo(
                     filename=filename,
@@ -295,8 +375,8 @@ class ProtocolParser:
                 
                 # Add metadata
                 if not stats['category']:
-                    stats['category'] = config.get_attack_category(attack_id)
-                    stats['description'] = config.attack_type_descriptions.get(attack_id, "Unknown")
+                    stats['category'] = self.config.get_attack_category(attack_id)
+                    stats['description'] = self.config.attack_type_descriptions.get(attack_id, "Unknown")
         
         # Convert sets to counts and add computed metrics
         result = {}

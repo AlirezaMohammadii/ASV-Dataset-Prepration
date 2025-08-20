@@ -38,8 +38,10 @@ from scripts.asv_dataset_integration import ASVDatasetIntegrator, IntegrationCon
 class ASVToDeepConversionSystem:
     """Complete conversion system from ASVspoof-2019 to Deep ASV Detection format"""
     
-    def __init__(self):
-        self.logger = setup_logger('ASVToDeepConversion', config.paths.logs_dir)
+    def __init__(self, config_instance=None):
+        # Use provided config or fall back to global config
+        self.config = config_instance if config_instance is not None else config
+        self.logger = setup_logger('ASVToDeepConversion', self.config.paths.logs_dir)
         self.timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
         
         # Deep ASV Detection paths
@@ -49,6 +51,17 @@ class ASVToDeepConversionSystem:
         # Conversion results
         self.conversion_results = {}
         
+    def _normalize_user_id(self, user_id_value) -> int:
+        """Return numeric user id from either int or 'user_XX' string."""
+        try:
+            if isinstance(user_id_value, int):
+                return user_id_value
+            s = str(user_id_value)
+            digits = ''.join(ch for ch in s if ch.isdigit())
+            return int(digits) if digits else 0
+        except Exception:
+            return 0
+
     def display_split_options(self):
         """Display available split options with detailed information"""
         print("\n" + "="*70)
@@ -199,12 +212,31 @@ class ASVToDeepConversionSystem:
         file_mappings = split_result['file_mappings']
         global_stats = split_result['global_stats']
         
-        # Data directories for original files
-        data_dirs = {
-            'train': config.paths.la_train_dir,
-            'dev': config.paths.la_dev_dir,
-            'eval': config.paths.la_eval_dir
-        }
+        # Data directories for original files - use correct paths based on dataset year and scenario
+        if getattr(self.config, 'dataset_year', None) and self.config.dataset_year.value == '2021':
+            # ASVspoof2021: eval only
+            if getattr(self.config, 'scenario', None) and self.config.scenario.value == 'PA':
+                data_dirs = {
+                    'eval': self.config.paths.pa2021_eval_dir
+                }
+            else:
+                data_dirs = {
+                    'eval': self.config.paths.la2021_eval_dir
+                }
+        else:
+            # ASVspoof2019: train, dev, eval
+            if getattr(self.config, 'scenario', None) and self.config.scenario.value == 'PA':
+                data_dirs = {
+                    'train': self.config.paths.pa_train_dir,
+                    'dev': self.config.paths.pa_dev_dir,
+                    'eval': self.config.paths.pa_eval_dir
+                }
+            else:
+                data_dirs = {
+                    'train': self.config.paths.la_train_dir,
+                    'dev': self.config.paths.la_dev_dir,
+                    'eval': self.config.paths.la_eval_dir
+                }
         
         # Progress tracking
         total_files = sum(stats['total_files'] for stats in global_stats.values())
@@ -229,23 +261,28 @@ class ASVToDeepConversionSystem:
                     
                     # Determine target file path and name
                     new_split = mapping['new_split']
-                    user_id = mapping['user_id']
+                    user_id_num = self._normalize_user_id(mapping['user_id'])
                     label = mapping['label']
                     attack_category = mapping.get('attack_category', '')
                     
                     # Create user directory
-                    user_dir = self.data_asv_dir / new_split / f"user_{user_id:02d}"
+                    user_dir = self.data_asv_dir / new_split / f"user_{user_id_num:02d}"
                     user_dir.mkdir(parents=True, exist_ok=True)
                     
                     # Generate target filename
-                    file_counter = len(list(user_dir.glob(f"user{user_id:02d}_{label}_*.flac"))) + 1
+                    file_counter = len(list(user_dir.glob(f"user{user_id_num:02d}_{label}_*.flac"))) + 1
                     
                     if label == 'genuine':
-                        target_filename = f"user{user_id:02d}_genuine_{file_counter:03d}.flac"
+                        target_filename = f"user{user_id_num:02d}_genuine_{file_counter:03d}.flac"
                     else:
                         # Map attack category to suffix
                         attack_suffix = self._get_attack_suffix(attack_category)
-                        target_filename = f"user{user_id:02d}_deepfake_{attack_suffix}_{file_counter:03d}.flac"
+                        # Optionally include attack ID if available in mapping and config enabled
+                        attack_id = mapping.get('attack_id')
+                        if self.config.conversion.include_attack_id_in_filename and attack_id:
+                            target_filename = f"user{user_id_num:02d}_deepfake_{attack_suffix}_{attack_id.lower()}_{file_counter:03d}.flac"
+                        else:
+                            target_filename = f"user{user_id_num:02d}_deepfake_{attack_suffix}_{file_counter:03d}.flac"
                     
                     target_file = user_dir / target_filename
                     
@@ -287,7 +324,10 @@ class ASVToDeepConversionSystem:
         category_map = {
             'TTS': 'tts',
             'VC': 'vc', 
-            'TTS_VC': 'tts_vc'
+            'TTS_VC': 'tts_vc',
+            'pa_perfect': 'pa_perfect',
+            'pa_high': 'pa_high',
+            'pa_low': 'pa_low'
         }
         
         return category_map.get(attack_category, 'tts')
@@ -320,7 +360,7 @@ class ASVToDeepConversionSystem:
     
     def save_conversion_report(self):
         """Save detailed conversion report"""
-        report_file = config.paths.logs_dir / f"asv_to_deep_conversion_{self.timestamp}.json"
+        report_file = self.config.paths.logs_dir / f"asv_to_deep_conversion_{self.timestamp}.json"
         
         with open(report_file, 'w') as f:
             json.dump(self.conversion_results, f, indent=2, default=str)

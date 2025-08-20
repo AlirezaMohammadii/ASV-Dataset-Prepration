@@ -38,8 +38,10 @@ from utils.logging_utils import setup_logger
 class DataStructureAnalyzer:
     """Comprehensive analyzer for ASVspoof-2019 dataset structure"""
     
-    def __init__(self):
-        self.logger = setup_logger('DataStructureAnalyzer', config.paths.logs_dir)
+    def __init__(self, config_instance=None):
+        # Use provided config or fall back to global config
+        self.config = config_instance if config_instance is not None else config
+        self.logger = setup_logger('DataStructureAnalyzer', self.config.paths.logs_dir)
         self.analysis_results = {}
         self.timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
         
@@ -47,7 +49,7 @@ class DataStructureAnalyzer:
         """Validate that all required dataset paths exist"""
         self.logger.info("Validating dataset paths...")
         
-        errors = config.validate_paths()
+        errors = self.config.validate_paths()
         if errors:
             self.logger.error("Dataset validation failed:")
             for error in errors:
@@ -62,11 +64,32 @@ class DataStructureAnalyzer:
         self.logger.info("Analyzing file counts across all splits...")
         
         file_counts = {}
-        data_dirs = {
-            'train': config.paths.la_train_dir,
-            'dev': config.paths.la_dev_dir,
-            'eval': config.paths.la_eval_dir
-        }
+        
+        # Use correct paths based on dataset year and scenario
+        if getattr(self.config, 'dataset_year', None) and self.config.dataset_year.value == '2021':
+            # ASVspoof2021: eval only
+            if getattr(self.config, 'scenario', None) and self.config.scenario.value == 'PA':
+                data_dirs = {
+                    'eval': self.config.paths.pa2021_eval_dir
+                }
+            else:
+                data_dirs = {
+                    'eval': self.config.paths.la2021_eval_dir
+                }
+        else:
+            # ASVspoof2019: train, dev, eval
+            if getattr(self.config, 'scenario', None) and self.config.scenario.value == 'PA':
+                data_dirs = {
+                    'train': self.config.paths.pa_train_dir,
+                    'dev': self.config.paths.pa_dev_dir,
+                    'eval': self.config.paths.pa_eval_dir
+                }
+            else:
+                data_dirs = {
+                    'train': self.config.paths.la_train_dir,
+                    'dev': self.config.paths.la_dev_dir,
+                    'eval': self.config.paths.la_eval_dir
+                }
         
         total_files = 0
         total_size = 0
@@ -106,6 +129,48 @@ class DataStructureAnalyzer:
             'total_size_gb': total_size / (1024 * 1024 * 1024)
         }
         
+        # Build a minimal detailed analysis with user assignments expected downstream
+        try:
+            from utils.protocol_parser import ProtocolParser
+            p = ProtocolParser(config_instance=self.config)
+            entries = p.parse_all_protocols()
+            speakers = sorted({e.speaker_id for split_entries in entries.values() for e in split_entries})
+            user_assignments = []
+            for idx, spk in enumerate(speakers, 1):
+                user_assignments.append({
+                    'user_id': f"user_{idx:02d}",
+                    'speakers': [spk],
+                    'total_files': 0,
+                    'splits': []
+                })
+            detailed = {
+                'user_mapping_strategy': {
+                    'user_assignments': user_assignments
+                }
+            }
+        except Exception as e:
+            detailed = {'user_mapping_strategy': {'user_assignments': []}}
+            self.logger.warning(f"Could not build detailed user assignments: {e}")
+        
+        # Save analysis JSON to disk for other components
+        out = {
+            'timestamp': self.timestamp,
+            'file_counts': file_counts,
+            'analysis_type': 'data_structure',
+            'total_files': total_files,
+            'total_size_gb': total_size / (1024 * 1024 * 1024),
+            'detailed_analyses': detailed
+        }
+        
+        analysis_dir = self.config.paths.analysis_output_dir
+        analysis_dir.mkdir(parents=True, exist_ok=True)
+        out_file = analysis_dir / f"data_structure_analysis_{self.timestamp}.json"
+        import json
+        with open(out_file, 'w') as f:
+            json.dump(out, f, indent=2)
+        self.logger.info(f"✓ Wrote analysis file: {out_file}")
+        
+        self.analysis_results = out
         self.logger.info(f"✓ Total files analyzed: {total_files} ({total_size / (1024*1024*1024):.2f} GB)")
         return file_counts
 

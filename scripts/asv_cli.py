@@ -19,6 +19,7 @@ sys.path.append(str(Path(__file__).parent.parent))
 
 from scripts.asv_dataset_integration import ASVDatasetIntegrator, IntegrationConfig, ConversionMode, ValidationLevel
 from config.integration_configs import IntegrationPresets
+from config.dataset_config import DatasetYear, Scenario
 
 
 def list_presets():
@@ -151,6 +152,10 @@ def run_integration(args):
                 config.validation_level = ValidationLevel(args.validation)
             if args.split_option:
                 config.splitting_option = args.split_option
+            if args.dataset_year:
+                config.dataset_year = DatasetYear(args.dataset_year)
+            if args.scenario:
+                config.scenario = Scenario(args.scenario)
             if args.dry_run:
                 config.dry_run = True
             if args.no_backup:
@@ -164,6 +169,8 @@ def run_integration(args):
                 conversion_mode=ConversionMode(args.mode or 'full_conversion'),
                 validation_level=ValidationLevel(args.validation or 'standard'),
                 splitting_option=args.split_option or 'A',
+                dataset_year=DatasetYear(args.dataset_year or '2019'),
+                scenario=Scenario(args.scenario or 'LA'),
                 dry_run=args.dry_run,
                 enable_backup=not args.no_backup,
                 enable_rollback=not args.no_rollback
@@ -175,6 +182,8 @@ def run_integration(args):
         print(f"Mode:        {config.conversion_mode.value}")
         print(f"Validation:  {config.validation_level.value}")
         print(f"Split:       Option {config.splitting_option}")
+        print(f"Dataset Year: {config.dataset_year.value}")
+        print(f"Scenario:    {config.scenario.value}")
         print(f"Backup:      {'Enabled' if config.enable_backup else 'Disabled'}")
         print(f"Rollback:    {'Enabled' if config.enable_rollback else 'Disabled'}")
         print(f"Dry Run:     {'Yes' if config.dry_run else 'No'}")
@@ -300,11 +309,18 @@ def run_dataset_conversion(args):
     """Run dataset conversion to Deep ASV Detection format"""
     try:
         from scripts.asv_to_deep_conversion import ASVToDeepConversionSystem
+        from config.dataset_config import ASVDatasetConfig, DatasetYear, Scenario
         
         print("🚀 ASV TO DEEP ASV DETECTION CONVERSION")
         print("="*50)
         
-        converter = ASVToDeepConversionSystem()
+        # Create config instance with dataset year and scenario
+        dataset_config = ASVDatasetConfig(
+            dataset_year=DatasetYear(args.dataset_year) if args.dataset_year else DatasetYear.ASV2019,
+            scenario=Scenario(args.scenario) if args.scenario else Scenario.LA
+        )
+        
+        converter = ASVToDeepConversionSystem(config_instance=dataset_config)
         
         # Handle test mode
         if args.test_mode:
@@ -327,12 +343,21 @@ def run_dataset_conversion(args):
             builtins.input = mock_input
             
             try:
+                # Before conversion, set dataset-year via integration analyzer to generate mappings
+                from scripts.asv_dataset_integration import ASVDatasetIntegrator, IntegrationConfig, ConversionMode
+                ic = IntegrationConfig(conversion_mode=ConversionMode.ANALYSIS_ONLY, dataset_year=DatasetYear(args.dataset_year), scenario=Scenario(args.scenario), enable_backup=False, enable_rollback=False)
+                integrator = ASVDatasetIntegrator(ic)
+                integrator.run_integration()
                 success = converter.run_complete_conversion()
                 return 0 if success else 1
             finally:
                 builtins.input = original_input
         else:
             # Interactive mode
+            from scripts.asv_dataset_integration import ASVDatasetIntegrator, IntegrationConfig, ConversionMode
+            ic = IntegrationConfig(conversion_mode=ConversionMode.ANALYSIS_ONLY, dataset_year=DatasetYear(args.dataset_year), scenario=Scenario(args.scenario), enable_backup=False, enable_rollback=False)
+            integrator = ASVDatasetIntegrator(ic)
+            integrator.run_integration()
             success = converter.run_complete_conversion()
             return 0 if success else 1
             
@@ -429,6 +454,8 @@ Examples:
                              help='Validation level (overrides preset)')
     config_group.add_argument('--split-option', choices=['A', 'B', 'C'],
                              help='Dataset splitting option (overrides preset)')
+    config_group.add_argument('--dataset-year', choices=['2019', '2021'], help='Dataset year to process')
+    config_group.add_argument('--scenario', choices=['LA', 'PA'], help='Scenario (LA or PA)')
     
     # Processing options
     process_group = run_parser.add_argument_group('Processing')
@@ -454,6 +481,8 @@ Examples:
     convert_parser = subparsers.add_parser('convert', help='Convert dataset to Deep ASV Detection format')
     convert_parser.add_argument('--split-option', choices=['A', 'B', 'C'], help='Force specific split option')
     convert_parser.add_argument('--test-mode', action='store_true', help='Run in test mode with automated input')
+    convert_parser.add_argument('--dataset-year', choices=['2019', '2021'], default='2019', help='Dataset year to process')
+    convert_parser.add_argument('--scenario', choices=['LA', 'PA'], default='LA', help='Scenario (LA or PA)')
     
     # Recommend command
     recommend_parser = subparsers.add_parser('recommend', help='Get split option recommendation based on use case')

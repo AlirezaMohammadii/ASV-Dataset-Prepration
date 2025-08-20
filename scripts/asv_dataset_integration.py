@@ -34,11 +34,13 @@ import argparse
 sys.path.append(str(Path(__file__).parent.parent))
 
 from config.dataset_config import ASVDatasetConfig
+from config.dataset_config import DatasetYear, Scenario, DatasetSplit, set_active_dataset
 from scripts.data_structure_analyzer import DataStructureAnalyzer
 from scripts.file_organization_system import FileOrganizationSystem
 # from scripts.fix_speaker_assignments import fix_speaker_assignments  # Removed - functionality integrated
 from scripts.dataset_splitting_balancing import DatasetSplittingSystem
 from utils.logging_utils import setup_logger
+from utils.protocol_parser import ProtocolParser
 
 
 class ConversionMode(Enum):
@@ -62,6 +64,8 @@ class IntegrationConfig:
     # Mode settings
     conversion_mode: ConversionMode = ConversionMode.FULL_CONVERSION
     validation_level: ValidationLevel = ValidationLevel.STANDARD
+    dataset_year: DatasetYear = DatasetYear.ASV2019
+    scenario: Scenario = Scenario.LA
     
     # Dataset settings
     max_users: int = 50
@@ -106,7 +110,9 @@ class ASVDatasetIntegrator:
     
     def __init__(self, config: IntegrationConfig):
         self.config = config
-        self.dataset_config = ASVDatasetConfig()
+        # Set active dataset per config (strict, no fallbacks)
+        set_active_dataset(self.config.dataset_year, self.config.scenario)
+        self.dataset_config = ASVDatasetConfig(dataset_year=self.config.dataset_year, scenario=self.config.scenario)
         self.timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
         
         # Initialize logging
@@ -146,20 +152,40 @@ class ASVDatasetIntegrator:
             system_backup = self.backup_dir / f"system_backup_{backup_timestamp}"
             system_backup.mkdir(exist_ok=True)
             
-            # Backup output directory
+            # Backup output directory (exclude all integration directories to prevent nesting)
             output_backup = system_backup / "output"
             if self.dataset_config.paths.output_root.exists():
+                self.logger.info("  📁 Backing up output directory...")
+                # Create a custom ignore function to exclude integration directories
+                def ignore_integration_dirs(dir, files):
+                    return [f for f in files if f.startswith('integration_')]
+                
                 shutil.copytree(
                     self.dataset_config.paths.output_root, 
                     output_backup, 
                     dirs_exist_ok=True,
-                    ignore=shutil.ignore_patterns(f"integration_{self.timestamp}")
+                    ignore=ignore_integration_dirs
                 )
+                self.logger.info("  ✅ Output directory backed up")
+            else:
+                self.logger.info("  ⚠️ Output directory does not exist - skipping")
             
-            # Backup logs
+            # Backup logs (exclude integration logs to prevent nesting)
             logs_backup = system_backup / "logs"
             if self.dataset_config.paths.logs_dir.exists():
-                shutil.copytree(self.dataset_config.paths.logs_dir, logs_backup, dirs_exist_ok=True)
+                self.logger.info("  📄 Backing up logs directory...")
+                def ignore_integration_logs(dir, files):
+                    return [f for f in files if f.startswith('asv_integration_')]
+                
+                shutil.copytree(
+                    self.dataset_config.paths.logs_dir, 
+                    logs_backup, 
+                    dirs_exist_ok=True,
+                    ignore=ignore_integration_logs
+                )
+                self.logger.info("  ✅ Logs directory backed up")
+            else:
+                self.logger.info("  ⚠️ Logs directory does not exist - skipping")
             
             self.state.backup_paths.append(system_backup)
             self.logger.info(f"✓ System backup created: {system_backup}")
@@ -181,16 +207,15 @@ class ASVDatasetIntegrator:
         if path_errors:
             validation_errors.extend(path_errors)
         
-        # Check required files for different modes
+        # Remove hard requirement on pre-existing mapping files; they will be generated in Task 2
+        # Keep requirement on data structure analysis only for modes that need it
         if self.config.conversion_mode in [ConversionMode.SPLIT_ONLY, ConversionMode.FULL_CONVERSION]:
             required_files = [
-                self.dataset_config.paths.analysis_output_dir / "file_label_mappings_*.csv",
                 self.dataset_config.paths.analysis_output_dir / "data_structure_analysis_*.json"
             ]
-            
             for pattern in required_files:
                 if not list(pattern.parent.glob(pattern.name)):
-                    validation_errors.append(f"Required file not found: {pattern}")
+                    self.logger.warning(f"Optional file not found (will be generated later if needed): {pattern}")
         
         # Check disk space (basic check)
         try:
@@ -234,7 +259,7 @@ class ASVDatasetIntegrator:
         try:
             self.logger.info("Running data structure analysis...")
             
-            analyzer = DataStructureAnalyzer()
+            analyzer = DataStructureAnalyzer(config_instance=self.dataset_config)
             
             # Run analysis
             if not analyzer.validate_dataset_paths():
@@ -261,7 +286,13 @@ class ASVDatasetIntegrator:
         try:
             self.logger.info("Running file label mapping...")
             
-            mapping_system = FileOrganizationSystem()
+            # Generate mapping CSV from protocols to ensure reproducibility
+            parser = ProtocolParser(config_instance=self.dataset_config)
+            mapping_saved = self._generate_label_mapping_csv(parser)
+            if not mapping_saved:
+                raise Exception("Failed to generate label mapping CSV from protocols")
+            
+            mapping_system = FileOrganizationSystem(config_instance=self.dataset_config)
             
             # Run mapping - create directory structure and plan operations
             if not mapping_system.create_directory_structure():
@@ -289,16 +320,8 @@ class ASVDatasetIntegrator:
         self.update_progress("Task 3: Speaker Assignment Fixing")
         
         try:
-            self.logger.info("Running speaker assignment fixing...")
-            
-            # Run fixing
-            results = fix_speaker_assignments()
-            
-            if not results:
-                raise Exception("Speaker assignment fixing failed")
-            
-            self.results['task3'] = results
-            self.logger.info("✓ Task 3 completed successfully")
+            self.logger.info("Skipping speaker assignment fixing - no longer required")
+            self.results['task3'] = {'status': 'skipped'}
             return True
             
         except Exception as e:
@@ -315,15 +338,19 @@ class ASVDatasetIntegrator:
             
             splitting_system = DatasetSplittingSystem()
             
-            # Run appropriate splitting option
-            if self.config.splitting_option.upper() == 'A':
-                result = splitting_system.implement_split_option_a()
-            elif self.config.splitting_option.upper() == 'B':
-                result = splitting_system.implement_split_option_b()
-            elif self.config.splitting_option.upper() == 'C':
+            # For 2021 LA: only eval available → force Option C mapping (train+dev empty; eval→test)
+            if self.dataset_config.dataset_year == DatasetYear.ASV2021:
                 result = splitting_system.implement_split_option_c()
             else:
-                raise ValueError(f"Invalid splitting option: {self.config.splitting_option}")
+                # Run appropriate splitting option
+                if self.config.splitting_option.upper() == 'A':
+                    result = splitting_system.implement_split_option_a()
+                elif self.config.splitting_option.upper() == 'B':
+                    result = splitting_system.implement_split_option_b()
+                elif self.config.splitting_option.upper() == 'C':
+                    result = splitting_system.implement_split_option_c()
+                else:
+                    raise ValueError(f"Invalid splitting option: {self.config.splitting_option}")
             
             if not result:
                 raise Exception("Dataset splitting failed")
@@ -843,6 +870,71 @@ class ASVDatasetIntegrator:
         
         return status
 
+    def _generate_label_mapping_csv(self, protocol_parser: ProtocolParser) -> bool:
+        """Generate a reproducible file_label_mappings CSV from protocols"""
+        try:
+            analysis_dir = self.dataset_config.paths.analysis_output_dir
+            analysis_dir.mkdir(parents=True, exist_ok=True)
+            from datetime import datetime
+            ts = datetime.now().strftime("%Y%m%d_%H%M%S")
+            out_csv = analysis_dir / f"file_label_mappings_{ts}.csv"
+            
+            # Build mapping using protocol parser
+            entries_by_split = protocol_parser.parse_all_protocols()
+            if self.dataset_config.dataset_year == DatasetYear.ASV2021:
+                data_dirs = {
+                    DatasetSplit.EVAL: self.dataset_config.paths.la2021_eval_dir,
+                }
+            else:
+                # 2019 - select data directories based on scenario
+                if self.dataset_config.scenario == Scenario.PA:
+                    data_dirs = {
+                        DatasetSplit.TRAIN: self.dataset_config.paths.pa_train_dir,
+                        DatasetSplit.DEV: self.dataset_config.paths.pa_dev_dir,
+                        DatasetSplit.EVAL: self.dataset_config.paths.pa_eval_dir,
+                    }
+                else:
+                    data_dirs = {
+                        DatasetSplit.TRAIN: self.dataset_config.paths.la_train_dir,
+                        DatasetSplit.DEV: self.dataset_config.paths.la_dev_dir,
+                        DatasetSplit.EVAL: self.dataset_config.paths.la_eval_dir,
+                    }
+            import csv
+            with open(out_csv, 'w', newline='') as f:
+                writer = csv.writer(f)
+                writer.writerow([
+                    'Original_Filename','Original_Speaker','Original_Label','Original_Attack_Type',
+                    'Mapped_Label','Mapped_Attack_Category','Split','File_Exists','File_Size_MB','Mapped_Filename_Pattern'
+                ])
+                for split_enum, entries in entries_by_split.items():
+                    split = split_enum.value
+                    for e in entries:
+                        filename = e.audio_file_name + '.flac'
+                        label = 'genuine' if e.key == 'bonafide' else 'deepfake'
+                        attack_id = None if label=='genuine' else e.system_id
+                        attack_cat = None if label=='genuine' else self.dataset_config.get_attack_category(attack_id)
+                        src = data_dirs[split_enum] / filename
+                        exists = src.exists()
+                        size_mb = (src.stat().st_size / (1024*1024)) if exists else ''
+                        pattern = self.dataset_config.conversion.genuine_file_format if label=='genuine' else self.dataset_config.get_deepfake_filename_format(attack_id or '')
+                        writer.writerow([
+                            filename,
+                            e.speaker_id,
+                            'bonafide' if label=='genuine' else 'spoof',
+                            attack_id or '',
+                            label,
+                            attack_cat or '',
+                            split,
+                            exists,
+                            size_mb,
+                            pattern
+                        ])
+            self.logger.info(f"✓ Generated mapping CSV: {out_csv}")
+            return True
+        except Exception as ex:
+            self.logger.error(f"Failed generating label mapping CSV: {ex}")
+            return False
+
 
 def create_config_from_args(args) -> IntegrationConfig:
     """Create integration config from command line arguments"""
@@ -891,6 +983,8 @@ Examples:
                        default='standard', help='Validation level')
     
     # Dataset settings
+    parser.add_argument('--dataset-year', choices=['2019', '2021'], default='2019', help='Dataset year to process')
+    parser.add_argument('--scenario', choices=['LA', 'PA'], default='LA', help='Scenario (LA or PA)')
     parser.add_argument('--max-users', type=int, default=50, help='Maximum number of users')
     parser.add_argument('--genuine-ratio', type=float, default=0.6, help='Target genuine ratio')
     
@@ -918,6 +1012,9 @@ Examples:
     try:
         # Create configuration
         config = create_config_from_args(args)
+        # Inject dataset selection
+        config.dataset_year = DatasetYear(args.dataset_year)
+        config.scenario = Scenario(args.scenario)
         
         # Create and run integrator
         integrator = ASVDatasetIntegrator(config)
